@@ -116,14 +116,14 @@
   '())
 
 (defvar lean-mode-map (make-sparse-keymap)
-  "Keymap used in Lean mode")
+  "Keymap used in Lean mode.")
 
 (defun lean-mk-check-menu-option (text sym)
   `[,text (lean-set-check-mode ',sym)
          :style radio :selected (eq lean-server-check-mode ',sym)])
 
 (easy-menu-define lean-mode-menu lean-mode-map
-  "Menu for the Lean major mode"
+  "Menu for the Lean major mode."
   `("Lean"
     ["Execute lean"         lean-execute                      t]
     ;; ["Create a new project" (call-interactively 'lean-project-create) (not (lean-project-inside-p))]
@@ -167,14 +167,14 @@
     (flycheck-after-syntax-check-hook    . lean-show-goal--handler)
     (flycheck-after-syntax-check-hook    . lean-next-error--handler)
     )
-  "Hooks which lean-mode needs to hook in.
+  "Hooks which `lean-mode' needs to hook in.
 
 The `car' of each pair is a hook variable, the `cdr' a function
 to be added or removed from the hook variable if Flycheck mode is
 enabled and disabled respectively.")
 
 (defun lean-mode-setup ()
-  "Default lean-mode setup"
+  "Default `lean-mode' setup."
   ;; server
   (ignore-errors (lean-server-ensure-alive))
   (setq mode-name '("Lean" (:eval (lean-server-status-string))))
@@ -201,10 +201,8 @@ enabled and disabled respectively.")
 ;; Automode List
 ;;;###autoload
 (define-derived-mode lean-mode prog-mode "Lean"
-  "Major mode for Lean
-     \\{lean-mode-map}
-Invokes `lean-mode-hook'.
-"
+  "Major mode for Lean.
+Invokes `lean-mode-hook'."
   :syntax-table lean-syntax-table
   :abbrev-table lean-abbrev-table
   :group 'lean
