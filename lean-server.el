@@ -7,10 +7,12 @@
 ;;
 
 (require 'cl-lib)
+(require 'dash)
+(require 'flycheck)
 (require 'json)
 (require 'lean-debug)
 (require 'lean-leanpkg)
-(require 'dash)
+(require 'lean-settings)
 
 (defcustom lean-server-show-message-hook '(lean-message-boxes-display)
   "Hook run on messages from Lean, allowing custom display.
@@ -95,7 +97,7 @@ least the following keys:
       (lean-server-process-buffer sess))))
 
 (defun lean-server-handle-signal (_process event)
-  "Handle signals for lean-server-process"
+  "Handle signals for lean-server-process."
   (force-mode-line-update)
   (let ((event-string (s-trim event)))
     (lean-debug "lean-server-handle-signal: %s"
@@ -104,8 +106,10 @@ least the following keys:
         (message (concat "Lean server died. See lean-server stderr buffer for details; "
                          "use lean-server-restart to restart it")))))
 
+(defvar lean-server-overrides)
+
 (defun lean-server-session-create (path-file)
-  "Creates a new server session"
+  "Create a new server session."
   (let* ((default-directory (f--traverse-upwards (f-dir? it) path-file))
          (exe (lean-get-executable lean-executable-name))
          (exe (if (assoc path-file lean-server-overrides)
@@ -183,7 +187,7 @@ least the following keys:
                          (concat json-req "\n"))))
 
 (defvar lean-server-sessions nil
-  "list of all running lean-server-sessions")
+  "List of all running `lean-server-session's.")
 
 (defun lean-server-session-alive-p (sess)
   (and sess
@@ -207,10 +211,10 @@ least the following keys:
         sess)))
 
 (defvar-local lean-server-session nil
-  "Lean server session for the current buffer")
+  "Lean server session for the current buffer.")
 
 (defvar lean-server-overrides nil
-  "alist of (path file . toolchain name) pairs defined by `lean-server-switch-version'.")
+  "Alist of (path file . toolchain name) pairs defined by `lean-server-switch-version'.")
 
 (defun lean-server-session-running-p (sess)
   (and sess (plist-get (lean-server-session-tasks sess) :is_running)))
@@ -285,7 +289,7 @@ least the following keys:
               (overlay-put ov 'help-echo (format "%s..." (plist-get task :desc)))))))))
 
 (defun lean-server-toggle-show-pending-tasks ()
-  "Toggles highlighting of pending tasks"
+  "Toggle highlighting of pending tasks."
   (interactive)
   (setq lean-server-show-pending-tasks (not lean-server-show-pending-tasks))
   (dolist (sess lean-server-sessions)
@@ -352,13 +356,13 @@ least the following keys:
         (lean-server-show-tasks)))))
 
 (defun lean-server-stop ()
-  "Stops the lean server associated with the current buffer"
+  "Stops the lean server associated with the current buffer."
   (interactive)
   (when lean-server-session
     (lean-server-session-kill lean-server-session)))
 
 (defun lean-server-ensure-alive ()
-  "Ensures that the current buffer has a lean server"
+  "Ensures that the current buffer has a lean server."
   (when (not (lean-server-session-alive-p lean-server-session))
     (setq lean-server-session (lean-server-session-get (lean-leanpkg-find-path-file)))
     (lean-server-show-tasks)
@@ -366,7 +370,7 @@ least the following keys:
     (lean-server-sync)))
 
 (defun lean-server-restart ()
-  "Restarts the lean server for the current buffer"
+  "Restarts the lean server for the current buffer."
   (interactive)
   (lean-server-stop)
   (lean-server-ensure-alive)
@@ -393,7 +397,7 @@ least the following keys:
   (lean-server-restart))
 
 (defun lean-server-send-command (cmd params &optional cb error-cb)
-  "Sends a command to the lean server for the current buffer, with a callback to be called upon completion"
+  "Sends a command to the lean server for the current buffer, with a callback to be called upon completion."
   (lean-server-ensure-alive)
   (lean-server-session-send-command lean-server-session cmd params cb error-cb))
 
@@ -405,7 +409,7 @@ least the following keys:
 asynchronous call into synchronous.")
 
 (defun lean-server-send-synchronous-command (cmd params)
-  "Sends a command to the lean server for the current buffer, waiting for and returning the response"
+  "Sends a command to the lean server for the current buffer, waiting for and returning the response."
   ;; inspired by company--force-sync
   (let ((res 'trash)
         (ok t)
@@ -425,7 +429,7 @@ asynchronous call into synchronous.")
       (error res))))
 
 (defun lean-server-sync (&optional buf)
-  "Synchronizes the state of BUF (or the current buffer, if nil) with the lean server"
+  "Synchronizes the state of BUF (or the current buffer, if nil) with the lean server."
   (interactive)
   (with-demoted-errors "lean server sync: %s"
     (with-current-buffer (or buf (current-buffer))
@@ -450,9 +454,8 @@ asynchronous call into synchronous.")
   "The amount of time to wait before syncing the lean server.
 
 This should be a string giving a relative time like \"90\" or \"2 hours 35 minutes\"
-(the acceptable forms are a number of seconds without units or
-some combination of values using units in timer-duration-words).
-")
+\(the acceptable forms are a number of seconds without units or
+some combination of values using units in timer-duration-words).")
 
 (defun lean-server-change-hook (_begin _end _len)
   (when lean-server-sync-on-change
@@ -518,27 +521,27 @@ some combination of values using units in timer-duration-words).
   (lean-server-sync-roi t))
 
 (defun lean-check-nothing ()
-  "Check nothing"
+  "Check nothing."
   (interactive)
   (lean-set-check-mode 'nothing))
 
 (defun lean-check-visible-lines ()
-  "Check visible lines"
+  "Check visible lines."
   (interactive)
   (lean-set-check-mode 'visible-lines))
 
 (defun lean-check-visible-lines-and-above ()
-  "Check visible lines and above"
+  "Check visible lines and above."
   (interactive)
   (lean-set-check-mode 'visible-lines-and-above))
 
 (defun lean-check-visible-files ()
-  "Check visible files"
+  "Check visible files."
   (interactive)
   (lean-set-check-mode 'visible-files))
 
 (defun lean-check-open-files ()
-  "Check visible files"
+  "Check visible files."
   (interactive)
   (lean-set-check-mode 'open-files))
 
