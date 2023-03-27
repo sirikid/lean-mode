@@ -9,7 +9,7 @@
 ;; Maintainer: Sebastian Ullrich <sebasti@nullri.ch>
 ;; Created: Jan 09, 2014
 ;; Keywords: languages
-;; Package-Requires: ((emacs "24.3") (dash "2.18.0") (helm "2.8.0") (lean-mode "3.3.0"))
+;; Package-Requires: ((emacs "24.3") (helm "2.8.0") (lean-mode "3.3.0"))
 ;; URL: https://github.com/leanprover/lean-mode
 
 ;; Released under Apache 2.0 license as described in the file LICENSE.
@@ -20,7 +20,6 @@
 
 ;;; Code:
 
-(require 'dash)
 (require 'helm)
 (require 'lean-server)
 
@@ -39,8 +38,8 @@
   (with-helm-current-buffer
     (let* ((response (lean-server-send-synchronous-command 'search (list :query helm-pattern)))
            (results (plist-get response :results))
-           (results (-filter (lambda (c) (plist-get c :source)) results))
-           (candidates (-map 'helm-lean-definitions-format-candidate results)))
+           (results (seq-filter (lambda (c) (plist-get c :source)) results))
+           (candidates (mapcar #'helm-lean-definitions-format-candidate results)))
       candidates)))
 
 ;;;###autoload
