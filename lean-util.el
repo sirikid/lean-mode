@@ -5,7 +5,6 @@
 ;;
 
 (require 'cl-lib)
-(require 'dash)
 
 (defun lean-line-offset (&optional pos)
   "Return the byte-offset of `pos` or current position, counting from the
@@ -43,11 +42,10 @@
 (defun lean--collect-entries (path recursive)
   (let (result
         (entries
-         (-reject
+         (seq-remove
           (lambda (file)
-            (or
-             (file-equal-p file ".")
-             (file-equal-p file "..")))
+            (or (file-equal-p file ".")
+                (file-equal-p file "..")))
           (directory-files path t))))
     ;; The following line is the only modification that I made
     ;; It waits 0.0001 second for an event. This wait allows
@@ -55,7 +53,7 @@
     ;; of this function.
     (sit-for 0.0001)
     (cond (recursive
-           (-map
+           (mapc
             (lambda (entry)
               (if (file-regular-p entry)
                   (setq result (cons entry result))
@@ -72,7 +70,7 @@
 (defun lean-find-files (path &optional fn recursive)
   "Find all files in PATH."
   ;; It calls lean--collect-entries instead of f--collect-entries
-  (let ((files (-select #'file-regular-p (lean--collect-entries path recursive))))
-    (if fn (-select fn files) files)))
+  (let ((files (seq-filter #'file-regular-p (lean--collect-entries path recursive))))
+    (if fn (seq-filter fn files) files)))
 
 (provide 'lean-util)
