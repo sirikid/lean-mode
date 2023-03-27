@@ -110,11 +110,12 @@ least the following keys:
 
 (defun lean-server-session-create (path-file)
   "Create a new server session."
-  (let* ((default-directory (f--traverse-upwards (f-dir? it) path-file))
-         (exe (lean-get-executable lean-executable-name))
+  ;; default-directory logic is so fucked up...
+  (let* ((default-directory (locate-dominating-file path-file #'file-directory-p))
+         (exe (executable-find lean-executable-name))
          (exe (if (assoc path-file lean-server-overrides)
-                  (if (f-file? (lean-get-executable "elan"))
-                      (list (lean-get-executable "elan") "run" "--install" (cdr (assoc path-file lean-server-overrides)) lean-executable-name)
+                  (if (executable-find "elan")
+                      (list (executable-find "elan") "run" "--install" (cdr (assoc path-file lean-server-overrides)) lean-executable-name)
                     (progn
                       (warn "Lean version override set but `elan` was not found; ignoring")
                       (list exe)))
@@ -378,10 +379,10 @@ least the following keys:
   (flycheck-buffer))
 
 (defun lean-server-versions ()
-  (unless (f-file? (lean-get-executable "elan"))
-    (error "`bin/elan` was not found in the Lean root dir \"%s\"" (lean-get-rootdir)))
+  (unless (executable-find "elan")
+    (error "Elan executable was not found"))
   (with-temp-buffer
-    (call-process (lean-get-executable "elan") nil t nil "toolchain" "list")
+    (call-process (executable-find "elan") nil t nil "toolchain" "list")
     (let ((results (split-string (buffer-string) "\n" t)))
       ; strip " (default)" from versions
       (--map (car (split-string it " ")) results))))

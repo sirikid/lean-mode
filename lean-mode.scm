@@ -19,7 +19,6 @@
   (inputs
    (list emacs-company
          emacs-dash
-         emacs-f
          emacs-flycheck
          emacs-helm))
   (synopsis "Emacs mode for Lean 3")

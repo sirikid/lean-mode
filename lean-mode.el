@@ -44,7 +44,6 @@
 (require 'lean-type)
 (require 'lean-message-boxes)
 (require 'lean-right-click)
-(require 'lean-dev)
 
 (defun lean-compile-string (exe-name args file-name)
   "Concatenate EXE-NAME, ARGS, and FILE-NAME."
@@ -52,7 +51,7 @@
 
 (defun lean-create-temp-in-system-tempdir (file-name prefix)
   "Create a temp lean file and return its name."
-  (make-temp-file (or prefix "flymake") nil (f-ext file-name)))
+  (make-temp-file (or prefix "flymake") nil (file-name-extension file-name)))
 
 (defun lean-execute (&optional arg)
   "Execute Lean in the current buffer."
@@ -65,9 +64,9 @@
           (buffer-file-name)
           (flymake-init-create-temp-buffer-copy 'lean-create-temp-in-system-tempdir))))
     (compile (lean-compile-string
-              (shell-quote-argument (f-full (lean-get-executable lean-executable-name)))
+              (shell-quote-argument (executable-find lean-executable-name))
               (or arg "")
-              (shell-quote-argument (f-full target-file-name))))
+              (shell-quote-argument (expand-file-name target-file-name))))
     ;; restore old value
     (setq compile-command cc)))
 

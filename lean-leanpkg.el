@@ -9,21 +9,12 @@
 (require 'json)
 (require 'lean-util)
 
-(defun lean-leanpkg-find-dir-in (dir)
-  (when dir
-    (or (lean-leanpkg-find-dir-in (f-parent dir))
-        (when (f-exists? (f-join dir "leanpkg.toml")) dir))))
-
 (defun lean-leanpkg-find-dir ()
-  (and (buffer-file-name)
-       (lean-leanpkg-find-dir-in (f-dirname (buffer-file-name)))))
+  (locate-dominating-file default-directory "leanpkg.toml"))
 
 (defun lean-leanpkg-find-dir-safe ()
   (or (lean-leanpkg-find-dir)
-      (error (format "cannot find leanpkg.toml for %s" (buffer-file-name)))))
-
-(defun lean-leanpkg-executable ()
-  (lean-get-executable "leanpkg"))
+      (error "Cannot find leanpkg.toml for %s" (buffer-file-name))))
 
 (defvar lean-leanpkg-running nil)
 (defvar-local lean-leanpkg-configure-prompt-shown nil)
@@ -41,7 +32,7 @@
       (let* ((default-directory dir)
              (out-buf (current-buffer))
              (proc (start-process "leanpkg" (current-buffer)
-                                  (lean-leanpkg-executable) cmd)))
+                                  (executable-find "leanpkg") cmd)))
         (comint-mode)
         (set-process-filter proc #'comint-output-filter)
         (set-process-sentinel
@@ -73,7 +64,7 @@
 (defun lean-leanpkg-find-path-file ()
   (let* ((json-object-type 'plist) (json-array-type 'list) (json-false nil)
          (path-json (shell-command-to-string
-                     (concat (shell-quote-argument (lean-get-executable lean-executable-name))
+                     (concat (shell-quote-argument (executable-find lean-executable-name))
                              " -p")))
          (path-out (json-read-from-string path-json)))
     (when (and (eq major-mode 'lean-mode)
