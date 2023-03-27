@@ -5,32 +5,6 @@
 ;;
 
 (require 'cl-lib)
-(require 'f)
-(require 's)
-(require 'dash)
-
-(defun lean-setup-rootdir ()
-  (let ((root (executable-find lean-executable-name)))
-    (when root
-      (setq lean-rootdir (f-dirname (f-dirname root))))
-    root))
-
-(defun lean-get-rootdir ()
-  (if lean-rootdir
-      (let ((lean-path (f-full (f-join lean-rootdir "bin" lean-executable-name))))
-        (unless (f-exists? lean-path)
-          (error "Incorrect 'lean-rootdir' value, path '%s' does not exist." lean-path))
-        lean-rootdir)
-    (or
-     (lean-setup-rootdir)
-     (error
-      (concat "Lean was not found in the 'exec-path' and 'lean-rootdir' is not defined. "
-              "Please set it via M-x customize-variable RET lean-rootdir RET.")))))
-
-(defun lean-get-executable (exe-name)
-  "Return fullpath of lean executable"
-  (let ((lean-bin-dir-name "bin"))
-    (f-full (f-join (lean-get-rootdir) lean-bin-dir-name exe-name))))
 
 (defun lean-line-offset (&optional pos)
   "Return the byte-offset of `pos` or current position, counting from the
@@ -68,11 +42,10 @@
 (defun lean--collect-entries (path recursive)
   (let (result
         (entries
-         (-reject
+         (seq-remove
           (lambda (file)
-            (or
-             (equal (f-filename file) ".")
-             (equal (f-filename file) "..")))
+            (or (file-equal-p file ".")
+                (file-equal-p file "..")))
           (directory-files path t))))
     ;; The following line is the only modification that I made
     ;; It waits 0.0001 second for an event. This wait allows
@@ -80,11 +53,11 @@
     ;; of this function.
     (sit-for 0.0001)
     (cond (recursive
-           (-map
+           (mapc
             (lambda (entry)
-              (if (f-file? entry)
+              (if (file-regular-p entry)
                   (setq result (cons entry result))
-                (when (f-directory? entry)
+                (when (file-directory-p entry)
                   (setq result (cons entry result))
                   (setq result (append result (lean--collect-entries entry recursive))))))
             entries))
@@ -97,7 +70,7 @@
 (defun lean-find-files (path &optional fn recursive)
   "Find all files in PATH."
   ;; It calls lean--collect-entries instead of f--collect-entries
-  (let ((files (-select 'f-file? (lean--collect-entries path recursive))))
-    (if fn (-select fn files) files)))
+  (let ((files (seq-filter #'file-regular-p (lean--collect-entries path recursive))))
+    (if fn (seq-filter fn files) files)))
 
 (provide 'lean-util)

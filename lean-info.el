@@ -133,10 +133,10 @@ exist."
                                         ; interrupted by requests made for `lean-show-goal`
   (lean-get-info-record-at-point
    (lambda (info-record)
-     (-if-let (source-record (plist-get info-record :source))
+     (if-let ((source-record (plist-get info-record :source)))
          (apply #'lean-find-definition-cont source-record)
-       (-if-let (id (plist-get info-record :full-id))
-           (message "no source location available for %s" id)
-         (message "unknown thing at point"))))))
+       (if-let ((id (plist-get info-record :full-id)))
+           (message "No source location available for %s" id)
+         (message "Unknown thing at point"))))))
 
 (provide 'lean-info)

@@ -7,10 +7,11 @@
 ;;
 
 (require 'cl-lib)
+(require 'flycheck)
 (require 'json)
 (require 'lean-debug)
 (require 'lean-leanpkg)
-(require 'dash)
+(require 'lean-settings)
 
 (defcustom lean-server-show-message-hook '(lean-message-boxes-display)
   "Hook run on messages from Lean, allowing custom display.
@@ -95,22 +96,25 @@ least the following keys:
       (lean-server-process-buffer sess))))
 
 (defun lean-server-handle-signal (_process event)
-  "Handle signals for lean-server-process"
+  "Handle signals for lean-server-process."
   (force-mode-line-update)
-  (let ((event-string (s-trim event)))
+  (let ((event-string (string-trim event)))
     (lean-debug "lean-server-handle-signal: %s"
                 (propertize event-string 'face '(:foreground "red")))
-    (if (s-contains? "abnormally" event)
+    (if (string-match-p "abnormally" event)
         (message (concat "Lean server died. See lean-server stderr buffer for details; "
                          "use lean-server-restart to restart it")))))
 
+(defvar lean-server-overrides)
+
 (defun lean-server-session-create (path-file)
-  "Creates a new server session"
-  (let* ((default-directory (f--traverse-upwards (f-dir? it) path-file))
-         (exe (lean-get-executable lean-executable-name))
+  "Create a new server session."
+  ;; default-directory logic is so fucked up...
+  (let* ((default-directory (locate-dominating-file path-file #'file-directory-p))
+         (exe (executable-find lean-executable-name))
          (exe (if (assoc path-file lean-server-overrides)
-                  (if (f-file? (lean-get-executable "elan"))
-                      (list (lean-get-executable "elan") "run" "--install" (cdr (assoc path-file lean-server-overrides)) lean-executable-name)
+                  (if (executable-find "elan")
+                      (list (executable-find "elan") "run" "--install" (cdr (assoc path-file lean-server-overrides)) lean-executable-name)
                     (progn
                       (warn "Lean version override set but `elan` was not found; ignoring")
                       (list exe)))
@@ -183,7 +187,7 @@ least the following keys:
                          (concat json-req "\n"))))
 
 (defvar lean-server-sessions nil
-  "list of all running lean-server-sessions")
+  "List of all running `lean-server-session's.")
 
 (defun lean-server-session-alive-p (sess)
   (and sess
@@ -207,10 +211,10 @@ least the following keys:
         sess)))
 
 (defvar-local lean-server-session nil
-  "Lean server session for the current buffer")
+  "Lean server session for the current buffer.")
 
 (defvar lean-server-overrides nil
-  "alist of (path file . toolchain name) pairs defined by `lean-server-switch-version'.")
+  "Alist of (path file . toolchain name) pairs defined by `lean-server-switch-version'.")
 
 (defun lean-server-session-running-p (sess)
   (and sess (plist-get (lean-server-session-tasks sess) :is_running)))
@@ -272,9 +276,10 @@ least the following keys:
            (roi (cdr (assq cur-fn (lean-server-session-current-roi lean-server-session)))))
       (dolist (task (plist-get tasks :tasks))
         (if (and (equal (plist-get task :file_name) cur-fn)
-                 (--any? (<= (max (car it) (plist-get task :pos_line))
-                             (min (cdr it) (plist-get task :end_pos_line)))
-                         roi))
+                 (seq-some (lambda (it)
+                             (<= (max (car it) (plist-get task :pos_line))
+                                 (min (cdr it) (plist-get task :end_pos_line))))
+                           roi))
             (let* ((reg (lean-server-task-region task))
                    (ov (make-overlay (car reg) (cdr reg))))
               (setq lean-server-task-overlays (cons ov lean-server-task-overlays))
@@ -285,7 +290,7 @@ least the following keys:
               (overlay-put ov 'help-echo (format "%s..." (plist-get task :desc)))))))))
 
 (defun lean-server-toggle-show-pending-tasks ()
-  "Toggles highlighting of pending tasks"
+  "Toggle highlighting of pending tasks."
   (interactive)
   (setq lean-server-show-pending-tasks (not lean-server-show-pending-tasks))
   (dolist (sess lean-server-sessions)
@@ -352,13 +357,13 @@ least the following keys:
         (lean-server-show-tasks)))))
 
 (defun lean-server-stop ()
-  "Stops the lean server associated with the current buffer"
+  "Stops the lean server associated with the current buffer."
   (interactive)
   (when lean-server-session
     (lean-server-session-kill lean-server-session)))
 
 (defun lean-server-ensure-alive ()
-  "Ensures that the current buffer has a lean server"
+  "Ensures that the current buffer has a lean server."
   (when (not (lean-server-session-alive-p lean-server-session))
     (setq lean-server-session (lean-server-session-get (lean-leanpkg-find-path-file)))
     (lean-server-show-tasks)
@@ -366,7 +371,7 @@ least the following keys:
     (lean-server-sync)))
 
 (defun lean-server-restart ()
-  "Restarts the lean server for the current buffer"
+  "Restarts the lean server for the current buffer."
   (interactive)
   (lean-server-stop)
   (lean-server-ensure-alive)
@@ -374,13 +379,13 @@ least the following keys:
   (flycheck-buffer))
 
 (defun lean-server-versions ()
-  (unless (f-file? (lean-get-executable "elan"))
-    (error "`bin/elan` was not found in the Lean root dir \"%s\"" (lean-get-rootdir)))
+  (unless (executable-find "elan")
+    (error "Elan executable was not found"))
   (with-temp-buffer
-    (call-process (lean-get-executable "elan") nil t nil "toolchain" "list")
+    (call-process (executable-find "elan") nil t nil "toolchain" "list")
     (let ((results (split-string (buffer-string) "\n" t)))
       ; strip " (default)" from versions
-      (--map (car (split-string it " ")) results))))
+      (mapcar (lambda (it) (car (split-string it " "))) results))))
 
 (defun lean-server-switch-version ()
   "Restarts the lean server for the current buffer, using a specific version from elan prompted by `completing-read'."
@@ -393,7 +398,7 @@ least the following keys:
   (lean-server-restart))
 
 (defun lean-server-send-command (cmd params &optional cb error-cb)
-  "Sends a command to the lean server for the current buffer, with a callback to be called upon completion"
+  "Sends a command to the lean server for the current buffer, with a callback to be called upon completion."
   (lean-server-ensure-alive)
   (lean-server-session-send-command lean-server-session cmd params cb error-cb))
 
@@ -405,7 +410,7 @@ least the following keys:
 asynchronous call into synchronous.")
 
 (defun lean-server-send-synchronous-command (cmd params)
-  "Sends a command to the lean server for the current buffer, waiting for and returning the response"
+  "Sends a command to the lean server for the current buffer, waiting for and returning the response."
   ;; inspired by company--force-sync
   (let ((res 'trash)
         (ok t)
@@ -425,7 +430,7 @@ asynchronous call into synchronous.")
       (error res))))
 
 (defun lean-server-sync (&optional buf)
-  "Synchronizes the state of BUF (or the current buffer, if nil) with the lean server"
+  "Synchronizes the state of BUF (or the current buffer, if nil) with the lean server."
   (interactive)
   (with-demoted-errors "lean server sync: %s"
     (with-current-buffer (or buf (current-buffer))
@@ -450,9 +455,8 @@ asynchronous call into synchronous.")
   "The amount of time to wait before syncing the lean server.
 
 This should be a string giving a relative time like \"90\" or \"2 hours 35 minutes\"
-(the acceptable forms are a number of seconds without units or
-some combination of values using units in timer-duration-words).
-")
+\(the acceptable forms are a number of seconds without units or
+some combination of values using units in timer-duration-words).")
 
 (defun lean-server-change-hook (_begin _end _len)
   (when lean-server-sync-on-change
@@ -463,36 +467,49 @@ some combination of values using units in timer-duration-words).
 
 (defun lean-server-compute-roi (sess)
   "Compute the region of interest for the session SESS."
-  (--mapcat (with-current-buffer it
+  (mapcan (lambda (it)
+            (with-current-buffer it
               (when (eq lean-server-session sess)
                 (list (cons (buffer-file-name)
-                            (--map (cons (line-number-at-pos (window-start it))
-                                         (line-number-at-pos (window-end it t)))
-                                   (get-buffer-window-list))))))
-            (buffer-list)))
+                            (mapcar (lambda (it)
+                                      (cons (line-number-at-pos (window-start it))
+                                            (line-number-at-pos (window-end it t))))
+                                    (get-buffer-window-list)))))))
+          (buffer-list)))
 
 (defun lean-server-session-send-roi (sess roi)
   (setf (lean-server-session-current-roi sess) roi)
   (lean-server-send-command
    'roi (list :mode lean-server-check-mode
-              :files (--map (list (cons :file_name (car it))
-                                  (cons :ranges (--map (list (cons :begin_line (car it))
-                                                             (cons :end_line (cdr it)))
-                                                       (cdr it))))
-                            roi))))
+              :files (mapcar (lambda (it)
+                               (list (cons :file_name (car it))
+                                     (cons :ranges (mapcar (lambda (it)
+                                                             (list (cons :begin_line (car it))
+                                                                   (cons :end_line (cdr it))))
+                                                           (cdr it)))))
+                             roi))))
 
 (defun lean-server-roi-subset-p (as bs)
-  (--all? (let ((b (cdr (assq (car it) bs))))
-            (and b (-all? (lambda (ar) (--any? (and (<= (car it) (car ar))
-                                                    (<= (cdr ar) (cdr it)))
-                                               b))
-                          (cdr it))))
-          as))
+  (seq-every-p
+   (lambda (it)
+     (let ((b (cdr (assq (car it) bs))))
+       (and b
+            (seq-every-p
+             (lambda (ar)
+               (seq-some (lambda (it)
+                           (and (<= (car it) (car ar))
+                                (<= (cdr ar) (cdr it))))
+                         b))
+             (cdr it)))))
+   as))
 
 (defun lean-server-roi-extend (roi delta)
-  (--map `(,(car it) .
-           ,(--map `(,(max 1 (- (car it) delta)) . ,(+ (cdr it) delta)) (cdr it)))
-         roi))
+  (map-apply (lambda (k v)
+               (cons k
+                     (map-apply (lambda (v1 v2)
+                                  (cons (max 1 (- v1 delta)) (+ v2 delta)))
+                                v)))
+             roi))
 
 (defun lean-server-roi-ok (old-roi new-roi)
   (and (lean-server-roi-subset-p new-roi old-roi)
@@ -518,27 +535,27 @@ some combination of values using units in timer-duration-words).
   (lean-server-sync-roi t))
 
 (defun lean-check-nothing ()
-  "Check nothing"
+  "Check nothing."
   (interactive)
   (lean-set-check-mode 'nothing))
 
 (defun lean-check-visible-lines ()
-  "Check visible lines"
+  "Check visible lines."
   (interactive)
   (lean-set-check-mode 'visible-lines))
 
 (defun lean-check-visible-lines-and-above ()
-  "Check visible lines and above"
+  "Check visible lines and above."
   (interactive)
   (lean-set-check-mode 'visible-lines-and-above))
 
 (defun lean-check-visible-files ()
-  "Check visible files"
+  "Check visible files."
   (interactive)
   (lean-set-check-mode 'visible-files))
 
 (defun lean-check-open-files ()
-  "Check visible files"
+  "Check visible files."
   (interactive)
   (lean-set-check-mode 'open-files))
 

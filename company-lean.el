@@ -9,7 +9,7 @@
 ;; Maintainer: Sebastian Ullrich <sebasti@nullri.ch>
 ;; Created: Jan 09, 2014
 ;; Keywords: languages
-;; Package-Requires: ((emacs "24.3") (dash "2.18.0") (s "1.10.0") (f "0.19.0") (company "0.9.3") (lean-mode "3.3.0"))
+;; Package-Requires: ((emacs "24.3") (company "0.9.3") (lean-mode "3.3.0"))
 ;; URL: https://github.com/leanprover/lean-mode
 
 ;; Released under Apache 2.0 license as described in the file LICENSE.
@@ -22,9 +22,6 @@
 
 (require 'company)
 (require 'company-etags)
-(require 'dash)
-(require 'f)
-(require 's)
 (require 'cl-lib)
 (require 'lean-util)
 (require 'lean-server)
@@ -57,12 +54,12 @@
                   'prefix prefix))))
 
 (defun company-lean--handle-singleton-candidate (prefix candidates)
-  "Handle singleton candidate. If the candidate does not start
-  with prefix, we add prefix itself as a candidate to prevent
-  from auto-completion."
-  (let ((candidate (car candidates)))
-    (cond ((s-prefix? prefix candidate) candidates)
-          (t                            `(,candidate ,prefix)))))
+  "Handle singleton candidate.
+If the candidate does not start with PREFIX, we add prefix itself
+as a candidate to prevent from auto-completion."
+  (if (string-prefix-p prefix (car candidates))
+      candidates
+    (list (car candidates) prefix)))
 
 (cl-defun company-lean--exec (&key skip-completions)
   "Synchronously queries completions for the current point from server and returns a plist with keys :prefix and :candidates., or nil if no completion should be triggered."
@@ -77,8 +74,9 @@
          (prefix (plist-get response :prefix)))
     (when candidates
       (setq candidates
-            (--map (apply 'company-lean--make-candidate prefix it)
-                   candidates))
+            (mapcar (lambda (it)
+                      (apply #'company-lean--make-candidate prefix it))
+                    candidates))
       (when (= (length candidates) 1)
         (setq candidates
               (company-lean--handle-singleton-candidate prefix candidates))))
@@ -110,10 +108,10 @@
   (get-text-property 0 'source arg))
 
 (defun company-lean--match (arg)
-  "Return the end of matched region"
+  "Return the end of matched region."
   (let ((prefix (get-text-property 0 'prefix arg)))
-    (when (and prefix (eq (s-index-of prefix arg) 0))
-        (length prefix))))
+    (when (and prefix (string-prefix-p prefix arg))
+      (length prefix))))
 
 (defun company-lean--meta (arg)
   (get-text-property 0 'doc arg))

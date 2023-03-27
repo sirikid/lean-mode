@@ -28,7 +28,6 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'dash)
 (require 'pcase)
 (require 'flycheck)
 (require 'lean-eri)
@@ -44,7 +43,6 @@
 (require 'lean-type)
 (require 'lean-message-boxes)
 (require 'lean-right-click)
-(require 'lean-dev)
 
 (defun lean-compile-string (exe-name args file-name)
   "Concatenate EXE-NAME, ARGS, and FILE-NAME."
@@ -52,7 +50,7 @@
 
 (defun lean-create-temp-in-system-tempdir (file-name prefix)
   "Create a temp lean file and return its name."
-  (make-temp-file (or prefix "flymake") nil (f-ext file-name)))
+  (make-temp-file (or prefix "flymake") nil (file-name-extension file-name)))
 
 (defun lean-execute (&optional arg)
   "Execute Lean in the current buffer."
@@ -65,9 +63,9 @@
           (buffer-file-name)
           (flymake-init-create-temp-buffer-copy 'lean-create-temp-in-system-tempdir))))
     (compile (lean-compile-string
-              (shell-quote-argument (f-full (lean-get-executable lean-executable-name)))
+              (shell-quote-argument (executable-find lean-executable-name))
               (or arg "")
-              (shell-quote-argument (f-full target-file-name))))
+              (shell-quote-argument (expand-file-name target-file-name))))
     ;; restore old value
     (setq compile-command cc)))
 
@@ -78,12 +76,13 @@
 (defun lean-check-expansion ()
   (interactive)
   (save-excursion
-    (if (looking-at (rx symbol-start "_")) t
-      (if (looking-at "\\_>") t
-        (backward-char 1)
-        (if (looking-at "\\.") t
+    (or (looking-at-p (rx (or (seq symbol-start "_") symbol-end)))
+        (progn
           (backward-char 1)
-          (if (looking-at "->") t nil))))))
+          (looking-at-p (rx ".")))
+        (progn
+          (backward-char 1)
+          (looking-at-p "->")))))
 
 (defun lean-tab-indent ()
   (interactive)
@@ -115,14 +114,14 @@
   '())
 
 (defvar lean-mode-map (make-sparse-keymap)
-  "Keymap used in Lean mode")
+  "Keymap used in Lean mode.")
 
 (defun lean-mk-check-menu-option (text sym)
   `[,text (lean-set-check-mode ',sym)
          :style radio :selected (eq lean-server-check-mode ',sym)])
 
 (easy-menu-define lean-mode-menu lean-mode-map
-  "Menu for the Lean major mode"
+  "Menu for the Lean major mode."
   `("Lean"
     ["Execute lean"         lean-execute                      t]
     ;; ["Create a new project" (call-interactively 'lean-project-create) (not (lean-project-inside-p))]
@@ -166,14 +165,14 @@
     (flycheck-after-syntax-check-hook    . lean-show-goal--handler)
     (flycheck-after-syntax-check-hook    . lean-next-error--handler)
     )
-  "Hooks which lean-mode needs to hook in.
+  "Hooks which `lean-mode' needs to hook in.
 
 The `car' of each pair is a hook variable, the `cdr' a function
 to be added or removed from the hook variable if Flycheck mode is
 enabled and disabled respectively.")
 
 (defun lean-mode-setup ()
-  "Default lean-mode setup"
+  "Default `lean-mode' setup."
   ;; server
   (ignore-errors (lean-server-ensure-alive))
   (setq mode-name '("Lean" (:eval (lean-server-status-string))))
@@ -200,10 +199,8 @@ enabled and disabled respectively.")
 ;; Automode List
 ;;;###autoload
 (define-derived-mode lean-mode prog-mode "Lean"
-  "Major mode for Lean
-     \\{lean-mode-map}
-Invokes `lean-mode-hook'.
-"
+  "Major mode for Lean.
+Invokes `lean-mode-hook'."
   :syntax-table lean-syntax-table
   :abbrev-table lean-abbrev-table
   :group 'lean
