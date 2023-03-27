@@ -7,7 +7,6 @@
 ;;
 
 (require 'cl-lib)
-(require 'dash)
 (require 'flycheck)
 (require 'json)
 (require 'lean-debug)
@@ -277,9 +276,10 @@ least the following keys:
            (roi (cdr (assq cur-fn (lean-server-session-current-roi lean-server-session)))))
       (dolist (task (plist-get tasks :tasks))
         (if (and (equal (plist-get task :file_name) cur-fn)
-                 (--any? (<= (max (car it) (plist-get task :pos_line))
-                             (min (cdr it) (plist-get task :end_pos_line)))
-                         roi))
+                 (seq-some (lambda (it)
+                             (<= (max (car it) (plist-get task :pos_line))
+                                 (min (cdr it) (plist-get task :end_pos_line))))
+                           roi))
             (let* ((reg (lean-server-task-region task))
                    (ov (make-overlay (car reg) (cdr reg))))
               (setq lean-server-task-overlays (cons ov lean-server-task-overlays))
@@ -385,7 +385,7 @@ least the following keys:
     (call-process (executable-find "elan") nil t nil "toolchain" "list")
     (let ((results (split-string (buffer-string) "\n" t)))
       ; strip " (default)" from versions
-      (--map (car (split-string it " ")) results))))
+      (mapcar (lambda (it) (car (split-string it " "))) results))))
 
 (defun lean-server-switch-version ()
   "Restarts the lean server for the current buffer, using a specific version from elan prompted by `completing-read'."
@@ -467,36 +467,49 @@ some combination of values using units in timer-duration-words).")
 
 (defun lean-server-compute-roi (sess)
   "Compute the region of interest for the session SESS."
-  (--mapcat (with-current-buffer it
+  (mapcan (lambda (it)
+            (with-current-buffer it
               (when (eq lean-server-session sess)
                 (list (cons (buffer-file-name)
-                            (--map (cons (line-number-at-pos (window-start it))
-                                         (line-number-at-pos (window-end it t)))
-                                   (get-buffer-window-list))))))
-            (buffer-list)))
+                            (mapcar (lambda (it)
+                                      (cons (line-number-at-pos (window-start it))
+                                            (line-number-at-pos (window-end it t))))
+                                    (get-buffer-window-list)))))))
+          (buffer-list)))
 
 (defun lean-server-session-send-roi (sess roi)
   (setf (lean-server-session-current-roi sess) roi)
   (lean-server-send-command
    'roi (list :mode lean-server-check-mode
-              :files (--map (list (cons :file_name (car it))
-                                  (cons :ranges (--map (list (cons :begin_line (car it))
-                                                             (cons :end_line (cdr it)))
-                                                       (cdr it))))
-                            roi))))
+              :files (mapcar (lambda (it)
+                               (list (cons :file_name (car it))
+                                     (cons :ranges (mapcar (lambda (it)
+                                                             (list (cons :begin_line (car it))
+                                                                   (cons :end_line (cdr it))))
+                                                           (cdr it)))))
+                             roi))))
 
 (defun lean-server-roi-subset-p (as bs)
-  (--all? (let ((b (cdr (assq (car it) bs))))
-            (and b (-all? (lambda (ar) (--any? (and (<= (car it) (car ar))
-                                                    (<= (cdr ar) (cdr it)))
-                                               b))
-                          (cdr it))))
-          as))
+  (seq-every-p
+   (lambda (it)
+     (let ((b (cdr (assq (car it) bs))))
+       (and b
+            (seq-every-p
+             (lambda (ar)
+               (seq-some (lambda (it)
+                           (and (<= (car it) (car ar))
+                                (<= (cdr ar) (cdr it))))
+                         b))
+             (cdr it)))))
+   as))
 
 (defun lean-server-roi-extend (roi delta)
-  (--map `(,(car it) .
-           ,(--map `(,(max 1 (- (car it) delta)) . ,(+ (cdr it) delta)) (cdr it)))
-         roi))
+  (map-apply (lambda (k v)
+               (cons k
+                     (map-apply (lambda (v1 v2)
+                                  (cons (max 1 (- v1 delta)) (+ v2 delta)))
+                                v)))
+             roi))
 
 (defun lean-server-roi-ok (old-roi new-roi)
   (and (lean-server-roi-subset-p new-roi old-roi)
