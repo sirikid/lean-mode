@@ -8,7 +8,6 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 's)
 (require 'lean-server)
 
 (defface lean-message-boxes-content-face
@@ -85,16 +84,15 @@
 
 (defun lean-message-boxes--as-string (caption str)
   "Construct a propertized string representing CAPTION and STR."
-  (let* ((str-copy (s-trim str)))
+  (let* ((str-copy (string-trim str)))
     (put-text-property 0 (length str-copy)
                        'face 'lean-message-boxes-content-face
                        str-copy)
-    (let* ((lines (s-lines str-copy))
+    (let* ((lines (string-lines str-copy))
            (w (apply #'max (mapcar #'length (cons caption lines)))))
-      (s-join "\n"
-              (mapcar
-               (lambda (l) (concat "│ " (lean-message-boxes--pad-to l w)))
-               lines)))))
+      (mapconcat (lambda (l) (concat "│ " (lean-message-boxes--pad-to l w)))
+                 lines
+                 "\n"))))
 
 (defun lean-message-boxes--in-comment (pos)
   "Use the faces set by `font-lock-mode` to deduce whether the

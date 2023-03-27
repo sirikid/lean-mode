@@ -21,8 +21,7 @@
          emacs-dash
          emacs-f
          emacs-flycheck
-         emacs-helm
-         emacs-s))
+         emacs-helm))
   (synopsis "Emacs mode for Lean 3")
   (description #f)
   (license expat)

@@ -7,7 +7,6 @@
 
 (require 'cl-lib)
 (require 'dash)
-(require 's)
 (require 'lean-info)
 (require 'lean-util)
 (require 'lean-server)
@@ -106,7 +105,8 @@ Takes as argument an optional callback function, which defaults to `eldoc-messag
 	(lean-get-info-record-at-point
 	 (lambda (info-record)
 	   (let ((state (plist-get info-record :state)))
-	     (unless (or (s-blank? state) (s-blank? (s-trim state)))
+	     (unless (or (null state)
+                         (string-blank-p state))
 	       (lean-with-info-output-to-buffer lean-show-goal-buffer-name (princ state))))))))))
 
 (defun lean-toggle-show-goal ()

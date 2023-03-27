@@ -6,7 +6,6 @@
 ;; Author: Gabriel Ebner
 ;;
 
-(require 's)
 (require 'json)
 (require 'lean-util)
 

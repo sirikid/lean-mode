@@ -99,10 +99,10 @@ least the following keys:
 (defun lean-server-handle-signal (_process event)
   "Handle signals for lean-server-process."
   (force-mode-line-update)
-  (let ((event-string (s-trim event)))
+  (let ((event-string (string-trim event)))
     (lean-debug "lean-server-handle-signal: %s"
                 (propertize event-string 'face '(:foreground "red")))
-    (if (s-contains? "abnormally" event)
+    (if (string-match-p "abnormally" event)
         (message (concat "Lean server died. See lean-server stderr buffer for details; "
                          "use lean-server-restart to restart it")))))
 

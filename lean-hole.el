@@ -109,7 +109,7 @@
                 (delete-region start-marker end-marker)
                 (insert selected-code)))))
         (when message
-          (message "%s" (s-trim message)))
+          (message "%s" (string-trim message)))
         (set-marker start-marker nil)
         (set-marker end-marker nil))))))
 

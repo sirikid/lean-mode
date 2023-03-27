@@ -6,7 +6,6 @@
 
 (require 'cl-lib)
 (require 'f)
-(require 's)
 (require 'dash)
 
 (defun lean-setup-rootdir ()
