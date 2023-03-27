@@ -104,8 +104,8 @@
                    (sort (flycheck-overlay-errors-in (line-beginning-position) (line-end-position))
                          #'flycheck-error-<)
                    ;; fall back to next error position
-                   (-if-let* ((pos (flycheck-next-error-pos 1)))
-                       (flycheck-overlay-errors-at pos)))))
+                   (when-let ((pos (flycheck-next-error-pos 1)))
+                     (flycheck-overlay-errors-at pos)))))
       (lean-with-info-output-to-buffer lean-next-error-buffer-name
        (dolist (e errors)
          (princ (format "%d:%d: " (flycheck-error-line e) (flycheck-error-column e)))
