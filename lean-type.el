@@ -6,7 +6,6 @@
 ;;
 
 (require 'cl-lib)
-(require 'dash)
 (require 'lean-info)
 (require 'lean-util)
 (require 'lean-server)
@@ -37,10 +36,11 @@
           (type-str type)
           str)
       (when tactic_params
-        (setq tactic_params (-map-indexed (lambda (i param)
-                                            (if (eq i tactic_param_idx)
-                                                (propertize param 'face 'eldoc-highlight-function-argument)
-                                              param)) tactic_params))
+        (setq tactic_params (seq-map-indexed (lambda (i param)
+                                               (if (eq i tactic_param_idx)
+                                                   (propertize param 'face 'eldoc-highlight-function-argument)
+                                                 param))
+                                             tactic_params))
         (setq type-str (mapconcat 'identity tactic_params " ")))
 
       (when (and name-str type-str)
