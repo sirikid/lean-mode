@@ -103,7 +103,7 @@ character at the given position is contained within a comment."
       (setq faces (list faces)))
     (dolist (f faces result)
       (setq result
-            (or result (-contains? '(font-lock-comment-face font-lock-comment-delimiter-face) f))))))
+            (or result (memq f '(font-lock-comment-face font-lock-comment-delimiter-face)))))))
 
 (defun lean-message-boxes--make-overlay (end-line end-col caption text)
   "Construct a message box overlay at LINE and COL with CAPTION and TEXT."
