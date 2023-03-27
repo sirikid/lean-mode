@@ -1,8 +1,9 @@
 (use-modules
- (guix)
- (guix git-download)
+ (gnu packages emacs-xyz)
  (guix build-system emacs)
- (gnu packages emacs-xyz))
+ (guix git-download)
+ (guix licenses)
+ (guix))
 
 (define %source-dir
   (dirname (current-filename)))
@@ -22,7 +23,7 @@
          emacs-flycheck
          emacs-helm
          emacs-s))
-  (synopsis #f)
+  (synopsis "Emacs mode for Lean 3")
   (description #f)
-  (license #f)
+  (license expat)
   (home-page "https://github.com/leanprover/lean-mode"))
