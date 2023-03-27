@@ -18,7 +18,6 @@
   (build-system emacs-build-system)
   (inputs
    (list emacs-company
-         emacs-dash
          emacs-flycheck
          emacs-helm))
   (synopsis "Emacs mode for Lean 3")
