@@ -100,14 +100,14 @@ Takes as argument an optional callback function, which defaults to `eldoc-messag
       (setq lean-show-goal--handler-mask nil)
     (let ((deactivate-mark)) ; keep transient mark
       (when (and (not (eq lean-server-check-mode 'nothing))
-					; TODO(gabriel): revisit ^^ once info no longer reparses the file
-		 (lean-info-buffer-active lean-show-goal-buffer-name))
-	(lean-get-info-record-at-point
-	 (lambda (info-record)
-	   (let ((state (plist-get info-record :state)))
-	     (unless (or (null state)
+                                        ; TODO(gabriel): revisit ^^ once info no longer reparses the file
+                 (lean-info-buffer-active lean-show-goal-buffer-name))
+        (lean-get-info-record-at-point
+         (lambda (info-record)
+           (let ((state (plist-get info-record :state)))
+             (unless (or (null state)
                          (string-blank-p state))
-	       (lean-with-info-output-to-buffer lean-show-goal-buffer-name (princ state))))))))))
+               (lean-with-info-output-to-buffer lean-show-goal-buffer-name (princ state))))))))))
 
 (defun lean-toggle-show-goal ()
   "Show goal at the current point."
