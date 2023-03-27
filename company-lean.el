@@ -9,7 +9,7 @@
 ;; Maintainer: Sebastian Ullrich <sebasti@nullri.ch>
 ;; Created: Jan 09, 2014
 ;; Keywords: languages
-;; Package-Requires: ((emacs "24.3") (dash "2.18.0") (company "0.9.3") (lean-mode "3.3.0"))
+;; Package-Requires: ((emacs "24.3") (company "0.9.3") (lean-mode "3.3.0"))
 ;; URL: https://github.com/leanprover/lean-mode
 
 ;; Released under Apache 2.0 license as described in the file LICENSE.
@@ -22,7 +22,6 @@
 
 (require 'company)
 (require 'company-etags)
-(require 'dash)
 (require 'cl-lib)
 (require 'lean-util)
 (require 'lean-server)
@@ -75,8 +74,9 @@ as a candidate to prevent from auto-completion."
          (prefix (plist-get response :prefix)))
     (when candidates
       (setq candidates
-            (--map (apply 'company-lean--make-candidate prefix it)
-                   candidates))
+            (mapcar (lambda (it)
+                      (apply #'company-lean--make-candidate prefix it))
+                    candidates))
       (when (= (length candidates) 1)
         (setq candidates
               (company-lean--handle-singleton-candidate prefix candidates))))
