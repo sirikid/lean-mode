@@ -698,7 +698,7 @@ order for the change to take effect."
                                                ⍯⍰⍱⍲⍳⍴⍵⍶⍷⍸⍹⍺⎕"))
   ("/"         . ("⧸"))
   ("quot"      . ("⧸"))
-                                      
+
   ;; Some combining characters.
   ;;
   ;; The following combining characters also have (other)
@@ -1267,8 +1267,6 @@ Suitable for use in the :set field of `defcustom'."
 (provide 'lean-input)
 ;;; lean-input.el ends here
 
-(require 'dash)
-
 (defun lean-input-export-translations ()
   "Export the current translation, (input, output) pairs for
 input-method, in a javascript format. It can be copy-pasted to
@@ -1278,16 +1276,18 @@ leanprover.github.io/tutorial/js/input-method.js"
       (get-buffer-create "*lean-translations*")
     (let ((exclude-list '("\\newline")))
       (insert "var corrections = {")
-      (--each
-          (--filter (not (member (car it) exclude-list))
-                    (lean-input-get-translations "Lean"))
-        (let* ((input (substring (car it) 1))
-               (outputs (cdr it)))
-          (insert (format "%s:\"" (prin1-to-string input)))
-          (cond ((vectorp outputs)
-                 (insert (elt outputs 0)))
-                (t (insert-char outputs)))
-          (insert (format "\",\n" input))))
+      (mapc
+       (lambda (it)
+         (let* ((input (substring (car it) 1))
+                (outputs (cdr it)))
+           (insert (format "%s:\"" (prin1-to-string input)))
+           (cond ((vectorp outputs)
+                  (insert (elt outputs 0)))
+                 (t (insert-char outputs)))
+           (insert (format "\",\n" input))))
+       (seq-filter (lambda (it)
+                     (not (member (car it) exclude-list)))
+                   (lean-input-get-translations "Lean")))
       (insert "};"))))
 
 (defun lean-input-export-translations-to-stdout ()
